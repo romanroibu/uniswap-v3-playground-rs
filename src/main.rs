@@ -1,3 +1,5 @@
+pub mod event;
+
 use futures::StreamExt;
 
 const UNI_V3_DAI_USDC_POOL: &str = "5777d92f208679db4b9778590fa3cab3ac9e2168";
