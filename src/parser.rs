@@ -20,7 +20,10 @@ impl SwapParser {
 	const DAI_BASE: u32 = 18;
 	const USDC_BASE: u32 = 6;
 
-	pub(crate) fn parse(log: &web3::ethabi::Log) -> Result<SwapEvent> {
+	pub(crate) fn parse(log: web3::types::Log, abi: &web3::ethabi::Event) -> Result<SwapEvent> {
+		let log = web3::ethabi::RawLog { topics: log.topics, data: log.data.0 };
+		let log = &abi.parse_log(log)?;
+
 		let sender = Self::get_address(log, "sender")?;
 		let receiver = Self::get_address(log, "recipient")?;
 		let dai = Self::get_int(log, "amount0")?;

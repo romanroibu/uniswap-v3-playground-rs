@@ -41,7 +41,7 @@ async fn main() -> Result<(), anyhow::Error> {
 
 		println!("BLOCK {:?}", block_number);
 
-		let swap_logs_in_block = web3
+		let logs = web3
 			.eth()
 			.logs(
 				web3::types::FilterBuilder::default()
@@ -52,11 +52,12 @@ async fn main() -> Result<(), anyhow::Error> {
 			)
 			.await?;
 
-		for log in swap_logs_in_block {
-			let log = web3::ethabi::RawLog { topics: log.topics, data: log.data.0 };
-			let log = swap_event_abi.parse_log(log)?;
+		let events = logs
+			.into_iter()
+			.map(|log| parser::SwapParser::parse(log, swap_event_abi))
+			.collect::<Result<Vec<_>, _>>()?;
 
-			let event = parser::SwapParser::parse(&log)?;
+		for event in events {
 			println!("- {}", event.to_string());
 		}
 
