@@ -29,6 +29,8 @@ async fn main() -> Result<(), anyhow::Error> {
 
 	let mut block_stream = web3.eth_subscribe().subscribe_new_heads().await?;
 
+	let mut buffer = buffer::ConfirmationBuffer::new(5);
+
 	loop {
 		let block = match block_stream.next().await {
 			Some(Ok(block)) => block,
@@ -39,8 +41,6 @@ async fn main() -> Result<(), anyhow::Error> {
 			Some(number) => number,
 			_ => continue,
 		};
-
-		println!("BLOCK {:?}", block_number);
 
 		let logs = web3
 			.eth()
@@ -58,10 +58,30 @@ async fn main() -> Result<(), anyhow::Error> {
 			.map(|log| parser::SwapParser::parse(log, swap_event_abi))
 			.collect::<Result<Vec<_>, _>>()?;
 
-		for event in events {
-			println!("- {}", event.to_string());
-		}
+		println!("BLOCK {} - {} Swap Events", block_number, events.len());
 
-		println!("---")
+		match buffer.push((block_number.as_u64(), events)) {
+			Ok(Some((block_number, events))) =>
+				if !events.is_empty() {
+					println!("---");
+					println!("CONFIRMED EVENTS FROM BLOCK {}:", block_number);
+					for event in events {
+						println!("- {}", event.to_string());
+					}
+					println!("---");
+				},
+			Ok(None) => (),
+			Err(buffer::ConfirmationBufferError::DepthExceeded(depth)) => {
+				println!(
+					"WARNING: Maximal reorganization depth {} exceeded ({}). Terminating.",
+					buffer.depth, depth,
+				);
+				return Ok(());
+			},
+			Err(buffer::ConfirmationBufferError::MissingBlockNumber(expected_block_number)) => {
+				println!("WARNING: Skipped block number {}. Terminating.", expected_block_number,);
+				return Ok(());
+			},
+		}
 	}
 }
