@@ -1,37 +1,37 @@
 use std::collections::VecDeque;
 
 #[derive(Debug)]
-pub(crate) struct ConfirmationBuffer<Value> {
+pub(crate) struct ReorganizingBuffer<Value> {
 	pub(crate) depth: usize,
 	queue: VecDeque<(u64, Vec<Value>)>,
 }
 
 #[derive(Debug)]
-pub(crate) enum ConfirmationBufferError {
-	MissingBlockNumber(u64),
+pub(crate) enum ReorganizingBufferError {
+	MissingOffset(u64),
 	DepthExceeded(u64),
 }
 
-impl<Value> ConfirmationBuffer<Value> {
-	pub(crate) fn new(depth: usize) -> ConfirmationBuffer<Value> {
-		ConfirmationBuffer { depth, queue: VecDeque::with_capacity(depth + 1) }
+impl<Value> ReorganizingBuffer<Value> {
+	pub(crate) fn new(depth: usize) -> ReorganizingBuffer<Value> {
+		ReorganizingBuffer { depth, queue: VecDeque::with_capacity(depth + 1) }
 	}
 
 	pub(crate) fn push(
 		&mut self,
-		(new_block_number, new_value): (u64, Vec<Value>),
-	) -> Result<Option<(u64, Vec<Value>)>, ConfirmationBufferError> {
-		if let Some((last_block_number, _)) = self.queue.back() {
+		(new_offset, new_value): (u64, Vec<Value>),
+	) -> Result<Option<(u64, Vec<Value>)>, ReorganizingBufferError> {
+		if let Some((last_offset, _)) = self.queue.back() {
 			// Ensure new item does not exceed reorganization depth limit
-			let expected_block_number = last_block_number + 1;
-			if new_block_number > expected_block_number {
-				return Err(ConfirmationBufferError::MissingBlockNumber(expected_block_number));
+			let expected_offset = last_offset + 1;
+			if new_offset > expected_offset {
+				return Err(ReorganizingBufferError::MissingOffset(expected_offset));
 			}
 
 			// Perform reorganization, if necessary
-			let reorg_depth = expected_block_number - new_block_number;
+			let reorg_depth = expected_offset - new_offset;
 			if reorg_depth > self.depth.try_into().unwrap() {
-				return Err(ConfirmationBufferError::DepthExceeded(reorg_depth));
+				return Err(ReorganizingBufferError::DepthExceeded(reorg_depth));
 			}
 			for _ in 0..reorg_depth {
 				self.queue.pop_back();
@@ -39,7 +39,7 @@ impl<Value> ConfirmationBuffer<Value> {
 		}
 
 		// Update queue with new item
-		self.queue.push_back((new_block_number, new_value));
+		self.queue.push_back((new_offset, new_value));
 
 		// Return item that passed confirmation requirement
 		if self.queue.len() > self.depth {
@@ -62,7 +62,7 @@ mod tests {
 
 			#[test]
 			fn passthrough() {
-				let mut buffer = ConfirmationBuffer::<&str>::new(0);
+				let mut buffer = ReorganizingBuffer::<&str>::new(0);
 				assert!(buffer.queue.is_empty());
 				assert_eq!(
 					buffer.push((123, vec!["abc", "def"])).unwrap(),
@@ -88,7 +88,7 @@ mod tests {
 					let item_3 = || (3, vec!["c"]);
 					let item_4 = || (4, vec!["d"]);
 
-					let mut buffer = ConfirmationBuffer::<&str>::new(DEPTH);
+					let mut buffer = ReorganizingBuffer::<&str>::new(DEPTH);
 					assert_eq!(buffer.queue, vec![]);
 
 					assert_eq!(buffer.push(item_1()).unwrap(), None);
@@ -111,7 +111,7 @@ mod tests {
 					let item_3 = || (3, vec!["c"]);
 					let item_4 = || (4, vec!["d"]);
 
-					let mut buffer = ConfirmationBuffer::<&str>::new(DEPTH);
+					let mut buffer = ReorganizingBuffer::<&str>::new(DEPTH);
 					assert_eq!(buffer.queue, vec![]);
 
 					assert_eq!(buffer.push(item_1()).unwrap(), None);
@@ -138,7 +138,7 @@ mod tests {
 					let item_3 = || (3, vec!["c"]);
 					let item_4 = || (4, vec!["d"]);
 
-					let mut buffer = ConfirmationBuffer::<&str>::new(DEPTH);
+					let mut buffer = ReorganizingBuffer::<&str>::new(DEPTH);
 					assert_eq!(buffer.queue, vec![]);
 
 					assert_eq!(buffer.push(item_1()).unwrap(), None);
@@ -164,7 +164,7 @@ mod tests {
 					let item_3 = || (3, vec!["c"]);
 					let item_4 = || (4, vec!["d"]);
 
-					let buffer_new = || ConfirmationBuffer {
+					let buffer_new = || ReorganizingBuffer {
 						depth: DEPTH,
 						queue: VecDeque::from([item_2(), item_3(), item_4()]),
 					};
@@ -193,7 +193,7 @@ mod tests {
 						let item_3 = || (3, vec!["c"]);
 						let item_4 = || (4, vec!["d"]);
 
-						let mut buffer = ConfirmationBuffer::<&str>::new(DEPTH);
+						let mut buffer = ReorganizingBuffer::<&str>::new(DEPTH);
 						assert_eq!(buffer.queue, vec![]);
 
 						assert_eq!(buffer.push(item_1()).unwrap(), None);
@@ -212,7 +212,7 @@ mod tests {
 						let result = buffer.push(item_1());
 
 						match result {
-							Err(ConfirmationBufferError::DepthExceeded(4)) => assert!(true),
+							Err(ReorganizingBufferError::DepthExceeded(4)) => assert!(true),
 							_ => assert!(false, "Unexpected result {:?}", result),
 						}
 						assert_eq!(buffer.queue, vec![item_2(), item_3(), item_4()]);

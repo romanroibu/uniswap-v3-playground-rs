@@ -29,7 +29,7 @@ async fn main() -> Result<(), anyhow::Error> {
 
 	let mut block_stream = web3.eth_subscribe().subscribe_new_heads().await?;
 
-	let mut buffer = buffer::ConfirmationBuffer::new(5);
+	let mut buffer = buffer::ReorganizingBuffer::new(5);
 
 	loop {
 		let block = match block_stream.next().await {
@@ -71,14 +71,14 @@ async fn main() -> Result<(), anyhow::Error> {
 					println!("---");
 				},
 			Ok(None) => (),
-			Err(buffer::ConfirmationBufferError::DepthExceeded(depth)) => {
+			Err(buffer::ReorganizingBufferError::DepthExceeded(depth)) => {
 				println!(
 					"WARNING: Maximal reorganization depth {} exceeded ({}). Terminating.",
 					buffer.depth, depth,
 				);
 				return Ok(());
 			},
-			Err(buffer::ConfirmationBufferError::MissingBlockNumber(expected_block_number)) => {
+			Err(buffer::ReorganizingBufferError::MissingOffset(expected_block_number)) => {
 				println!("WARNING: Skipped block number {}. Terminating.", expected_block_number,);
 				return Ok(());
 			},
