@@ -2,10 +2,12 @@ use futures::StreamExt;
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
-	const WEBSOCKET_INFURA_ENDPOINT: &str = "<YOUR OWN INFURA ENDPOINT>";
+	dotenv::dotenv().ok();
 
-	let web3 =
-		web3::Web3::new(web3::transports::ws::WebSocket::new(WEBSOCKET_INFURA_ENDPOINT).await?);
+	let ws_url = &std::env::var("INFURA_WEBSOCKET_ENDPOINT").unwrap();
+
+	let web3 = web3::Web3::new(web3::transports::ws::WebSocket::new(ws_url).await?);
+
 	let contract_address = web3::types::H160::from_slice(
 		&hex::decode("5777d92f208679db4b9778590fa3cab3ac9e2168").unwrap()[..],
 	);
