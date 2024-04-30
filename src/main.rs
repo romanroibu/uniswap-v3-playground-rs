@@ -55,7 +55,9 @@ async fn main() -> Result<(), anyhow::Error> {
 		for log in swap_logs_in_block {
 			let log = web3::ethabi::RawLog { topics: log.topics, data: log.data.0 };
 			let log = swap_event_abi.parse_log(log)?;
-			println!("{:?}", log);
+
+			let event = parser::SwapParser::parse(&log)?;
+			println!("- {}", event.to_string());
 		}
 
 		println!("---")

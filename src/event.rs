@@ -9,6 +9,22 @@ pub struct SwapEvent {
 	pub amounts: SwapAmounts,
 }
 
+impl ToString for SwapEvent {
+	fn to_string(&self) -> String {
+		match self.direction {
+			SwapDirection::DaiToUsdc => format!(
+				"Swap {} {} DAI -> {} USDC {}",
+				self.sender, self.amounts.dai, self.amounts.usdc, self.receiver
+			),
+			SwapDirection::UsdcToDai => format!(
+				"Swap {} {} USDC -> {} DAI {}",
+				self.sender, self.amounts.usdc, self.amounts.dai, self.receiver
+			),
+		}
+		.to_string()
+	}
+}
+
 #[derive(Debug, PartialEq)]
 pub enum SwapDirection {
 	DaiToUsdc,
