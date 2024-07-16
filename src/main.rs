@@ -10,7 +10,8 @@ const UNI_V3_DAI_USDC_POOL: &str = "5777d92f208679db4b9778590fa3cab3ac9e2168";
 async fn main() -> Result<(), anyhow::Error> {
 	dotenv::dotenv().ok();
 
-	let ws_url = &std::env::var("INFURA_WEBSOCKET_ENDPOINT").unwrap();
+	let ws_url =
+		&std::env::var("INFURA_WEBSOCKET_ENDPOINT").expect("INFURA_WEBSOCKET_ENDPOINT env var");
 
 	let web3 = web3::Web3::new(web3::transports::ws::WebSocket::new(ws_url).await?);
 
